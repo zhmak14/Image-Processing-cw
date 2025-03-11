@@ -1,10 +1,26 @@
 import cv2
 import argparse
 import os
+import numpy as np
+
+def dewarp_image_fixed(img):
+    orig_corners = np.float32([
+        (9, 15),
+        (236, 5),
+        (30, 244),
+        (251, 236)
+    ])
+    correct_corners = np.float32([
+        (0, 0), (256, 0), (0, 256), (256, 256)
+    ])
+    matrix = cv2.getPerspectiveTransform(orig_corners, correct_corners)
+    dewarped = cv2.warpPerspective(img, matrix, (256, 256))
+    return dewarped
 
 def process(img_path):
     img = cv2.imread(img_path)
-    return img
+    dewarped = dewarp_image_fixed(img)  # Apply dewarping
+    return dewarped
 
 def main(img_dir):
     results_dir = "Results"
