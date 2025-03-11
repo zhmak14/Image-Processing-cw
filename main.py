@@ -17,17 +17,17 @@ def dewarp_image(img): #dewarps the image and fixes perspective
     dewarped = cv2.warpPerspective(img, matrix, (256, 256)) #applying matrix
     return dewarped
 
-def inpaint_missing(img):
-    upper_right = img[0:256//2, 256//2:256]
+def inpaint_missing(img): #fills the missing region on the image
+    upper_right = img[0:256//2, 256//2:256] #crops the image to only top right fourth, knowing that the missing region can only appear there
     grayscale = cv2.cvtColor(upper_right, cv2.COLOR_BGR2GRAY)
-    ret, thresh = cv2.threshold(grayscale, 7, 255, cv2.THRESH_BINARY)
+    ret, thresh = cv2.threshold(grayscale, 7, 255, cv2.THRESH_BINARY) #binary threshholding on a grayscaled image to prepare for edge detection
     edge = cv2.Canny(thresh, 100, 150)
-    contours, hierarchy = cv2.findContours(edge, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    max_contour = max(contours, key=cv2.contourArea)
-    (x, y), radius = cv2.minEnclosingCircle(max_contour)
-    mask = np.zeros(img.shape[:2], np.uint8)
-    cv2.circle(mask, (int(x + 256//2), int(y)), int(radius + 2), (255), -1)
-    inpainted = cv2.inpaint(img, mask, 20, cv2.INPAINT_TELEA)
+    contours, hierarchy = cv2.findContours(edge, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE) #find the contours on the Canny applied image
+    max_contour = max(contours, key=cv2.contourArea) #select max contour by area
+    (x, y), radius = cv2.minEnclosingCircle(max_contour) #create a circle of radius and with center coordinates of the missing region contour
+    mask = np.zeros(img.shape[:2], np.uint8) #create an all black mask of the same size as the image
+    cv2.circle(mask, (int(x + 256//2), int(y)), int(radius + 2), (255), -1) #draw a the white circle of the missing region properties on the mask 
+    inpainted = cv2.inpaint(img, mask, 20, cv2.INPAINT_TELEA) #apply mask to the image and inpaint the circle
     return inpainted
 
 def process(img_path): #applies all the processing function to the image
