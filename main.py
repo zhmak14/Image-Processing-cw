@@ -30,11 +30,18 @@ def inpaint_missing(img): #fills the missing region on the image
     inpainted = cv2.inpaint(img, mask, 20, cv2.INPAINT_TELEA) #apply mask to the image and inpaint the circle
     return inpainted
 
+def remove_noise(img):
+    # denoised = cv2.bilateralFilter(img, 20, 50, 15) 
+    # denoised = cv2.medianBlur(denoised, 5) 92% accuracy
+    denoised = cv2.fastNlMeansDenoising(img, None, 25, 8, 20)
+    return denoised
+
 def process(img_path): #applies all the processing function to the image
     img = cv2.imread(img_path) #read the image
     dewarped = dewarp_image(img)
     inpainted = inpaint_missing(dewarped)
-    return inpainted
+    denoised = remove_noise(inpainted)
+    return denoised
 
 def main(img_dir):
     results_dir = "Results"
