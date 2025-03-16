@@ -31,16 +31,29 @@ def inpaint_missing(img): #fills the missing region on the image
     return inpainted
 
 def remove_noise(img):
-    # denoised = cv2.bilateralFilter(img, 20, 50, 15) 
-    # denoised = cv2.medianBlur(denoised, 5) 92% accuracy
-    denoised = cv2.fastNlMeansDenoising(img, None, 25, 8, 20)
+    denoised = cv2.fastNlMeansDenoisingColored(img, None, 5, 5, 3, 20)
+    # denoised = cv2.bilateralFilter(denoised, 20, 50, 15) 
+    # denoised = cv2.medianBlur(denoised, 5)
     return denoised
+
+def balance_colour(img):
+    b, g, r = cv2.split(img)
+    b_mean = np.mean(b)
+    g_mean = np.mean(g)
+    r_mean = np.mean(r)
+    mean_all = (b_mean + g_mean + r_mean) / 3
+    b = np.clip(b * (mean_all / b_mean), 0, 255).astype(np.uint8)
+    g = np.clip(g * (mean_all / g_mean), 0, 255).astype(np.uint8)
+    r = np.clip(r * (mean_all / r_mean), 0, 255).astype(np.uint8)
+    balanced = cv2.merge([b, g, r])
+    return balanced
 
 def process(img_path): #applies all the processing function to the image
     img = cv2.imread(img_path) #read the image
     dewarped = dewarp_image(img)
     inpainted = inpaint_missing(dewarped)
-    denoised = remove_noise(inpainted)
+    balanced = balance_colour(inpainted)
+    denoised = remove_noise(balanced)
     return denoised
 
 def main(img_dir):
