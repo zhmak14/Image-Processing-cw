@@ -31,29 +31,56 @@ def inpaint_missing(img): #fills the missing region on the image
     return inpainted
 
 def remove_noise(img):
-    denoised = cv2.fastNlMeansDenoisingColored(img, None, 5, 5, 3, 20)
-    # denoised = cv2.bilateralFilter(denoised, 20, 50, 15) 
-    # denoised = cv2.medianBlur(denoised, 5)
+    grayscale = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    bright_mask = grayscale > 200
+    bright_mask = bright_mask.astype(np.float32)[:, :, None]
+    denoised_default = cv2.fastNlMeansDenoisingColored(img, None, 7, 7, 3, 20)
+    denoised_bright = cv2.fastNlMeansDenoisingColored(img, None, 25, 25, 5, 20)
+    denoised = (denoised_default * (1 - bright_mask) + denoised_bright * bright_mask).astype(np.uint8)
     return denoised
 
-def balance_colour(img):
-    b, g, r = cv2.split(img)
-    b_mean = np.mean(b)
-    g_mean = np.mean(g)
-    r_mean = np.mean(r)
-    mean_all = (b_mean + g_mean + r_mean) / 3
-    b = np.clip(b * (mean_all / b_mean), 0, 255).astype(np.uint8)
-    g = np.clip(g * (mean_all / g_mean), 0, 255).astype(np.uint8)
-    r = np.clip(r * (mean_all / r_mean), 0, 255).astype(np.uint8)
-    balanced = cv2.merge([b, g, r])
-    return balanced
+def correct_white(img):
+    # b, g, r = cv2.split(img)
+    # b_mean = np.mean(b)
+    # g_mean = np.mean(g)
+    # r_mean = np.mean(r)
+    # mean_all = (b_mean + g_mean + r_mean) / 3
+    # b = np.clip(b * (mean_all / b_mean), 0, 255).astype(np.uint8)
+    # g = np.clip(g * (mean_all / g_mean), 0, 255).astype(np.uint8)
+    # r = np.clip(r * (mean_all / r_mean), 0, 255).astype(np.uint8)
+    # balanced = cv2.merge([b, g, r])
+    # return balanced
+    lab_img = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
+    l, a, b = cv2.split(lab_img)
+    l = cv2.normalize(l, None, 0, 254, cv2.NORM_MINMAX)
+    lab_img_adjusted = cv2.merge([l, a, b])
+    return cv2.cvtColor(lab_img_adjusted, cv2.COLOR_LAB2BGR)
+
+# def fix_contrast_brightness(img, threshold=220, clip_limit=10.0, tile_grid_size=(8,8)):
+#     lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
+#     l, a, b = cv2.split(lab)
+#     overexposed_mask = l > threshold  # Pixels above threshold are overexposed
+#     overexposed_mask = overexposed_mask.astype(np.uint8) * 255  # Convert to 0-255 mask
+#     clahe = cv2.createCLAHE(clipLimit=clip_limit, tileGridSize=tile_grid_size)
+#     l_clahe = clahe.apply(l)
+#     l_fixed = np.where(overexposed_mask == 255, l_clahe, l)
+#     lab_fixed = cv2.merge([l_fixed, a, b])
+#     return cv2.cvtColor(lab_fixed, cv2.COLOR_LAB2BGR)
+
+def sharpen_image(img):
+    img_smooth = cv2.bilateralFilter(img, 7, 50, 50)
+    laplacian = cv2.Laplacian(img_smooth, cv2.CV_64F)
+    sharpened = cv2.convertScaleAbs(img - laplacian)
+    return sharpened
 
 def process(img_path): #applies all the processing function to the image
     img = cv2.imread(img_path) #read the image
     dewarped = dewarp_image(img)
     inpainted = inpaint_missing(dewarped)
-    balanced = balance_colour(inpainted)
+    balanced = correct_white(inpainted)
     denoised = remove_noise(balanced)
+    #sharpened = sharpen_image(denoised)
+    #contrasted = fix_contrast_brightness(denoised)
     return denoised
 
 def main(img_dir):
