@@ -37,7 +37,7 @@ def remove_noise(img):
     b_blurred = cv2.medianBlur(b, 3)
     g_blurred = cv2.medianBlur(g, 3)
     denoised = cv2.merge([b_blurred, g_blurred, r])
-    denoised = cv2.fastNlMeansDenoisingColored(denoised, None, 1, 9, 5, 20)
+    denoised = cv2.fastNlMeansDenoisingColored(denoised, None, 1, 12, 7, 20)
     return denoised
 
 def balance_colours(img):
@@ -52,23 +52,13 @@ def balance_colours(img):
     balanced = cv2.merge([b, g, r])
     return balanced
 
-# def fix_contrast_brightness(img, threshold=220, clip_limit=10.0, tile_grid_size=(8,8)):
-#     lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
-#     l, a, b = cv2.split(lab)
-#     overexposed_mask = l > threshold  # Pixels above threshold are overexposed
-#     overexposed_mask = overexposed_mask.astype(np.uint8) * 255  # Convert to 0-255 mask
-#     clahe = cv2.createCLAHE(clipLimit=clip_limit, tileGridSize=tile_grid_size)
-#     l_clahe = clahe.apply(l)
-#     l_fixed = np.where(overexposed_mask == 255, l_clahe, l)
-#     lab_fixed = cv2.merge([l_fixed, a, b])
-#     return cv2.cvtColor(lab_fixed, cv2.COLOR_LAB2BGR)
+def fix_contrast_brightness(img):
+    adjusted = cv2.convertScaleAbs(img, None, 0.97, 1)
+    return adjusted
 
 def sharpen_image(img):
-    blurred = cv2.GaussianBlur(img, (0, 0), 1.5)
-
-    # Step 2: Compute the sharpened image
-    sharpened = cv2.addWeighted(img, 1 + 1.5, blurred, -1.5, 0)
-
+    blur = cv2.GaussianBlur(img, (0, 0), 1.5)
+    sharpened = cv2.addWeighted(img, 1 + 1.5, blur, -1.5, 0)
     return sharpened
 
 def process(img_path): #applies all the processing function to the image
@@ -77,8 +67,8 @@ def process(img_path): #applies all the processing function to the image
     inpainted = inpaint_missing(dewarped)
     denoised = remove_noise(inpainted)
     balanced = balance_colours(denoised)
-    sharpened = sharpen_image(balanced)
-    #contrasted = fix_contrast_brightness(denoised)
+    contrasted = fix_contrast_brightness(balanced)
+    sharpened = sharpen_image(contrasted)
     return sharpened
 
 def main(img_dir):
