@@ -31,30 +31,26 @@ def inpaint_missing(img): #fills the missing region on the image
     return inpainted
 
 def remove_noise(img):
-    grayscale = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    bright_mask = grayscale > 200
-    bright_mask = bright_mask.astype(np.float32)[:, :, None]
-    denoised_default = cv2.fastNlMeansDenoisingColored(img, None, 7, 7, 3, 20)
-    denoised_bright = cv2.fastNlMeansDenoisingColored(img, None, 25, 25, 5, 20)
-    denoised = (denoised_default * (1 - bright_mask) + denoised_bright * bright_mask).astype(np.uint8)
+    denoised = cv2.bilateralFilter(img, 15, 75, 75)
+    denoised = cv2.medianBlur(denoised, 3)
+    b, g, r = cv2.split(denoised)
+    b_blurred = cv2.medianBlur(b, 3)
+    g_blurred = cv2.medianBlur(g, 3)
+    denoised = cv2.merge([b_blurred, g_blurred, r])
+    denoised = cv2.fastNlMeansDenoisingColored(denoised, None, 1, 9, 5, 20)
     return denoised
 
-def correct_white(img):
-    # b, g, r = cv2.split(img)
-    # b_mean = np.mean(b)
-    # g_mean = np.mean(g)
-    # r_mean = np.mean(r)
-    # mean_all = (b_mean + g_mean + r_mean) / 3
-    # b = np.clip(b * (mean_all / b_mean), 0, 255).astype(np.uint8)
-    # g = np.clip(g * (mean_all / g_mean), 0, 255).astype(np.uint8)
-    # r = np.clip(r * (mean_all / r_mean), 0, 255).astype(np.uint8)
-    # balanced = cv2.merge([b, g, r])
-    # return balanced
-    lab_img = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
-    l, a, b = cv2.split(lab_img)
-    l = cv2.normalize(l, None, 0, 254, cv2.NORM_MINMAX)
-    lab_img_adjusted = cv2.merge([l, a, b])
-    return cv2.cvtColor(lab_img_adjusted, cv2.COLOR_LAB2BGR)
+def balance_colours(img):
+    b, g, r = cv2.split(img)
+    b_mean = np.mean(b)
+    g_mean = np.mean(g)
+    r_mean = np.mean(r)
+    mean_all = (b_mean + g_mean + r_mean) / 3
+    b = np.clip(b * (mean_all / b_mean), 0, 255).astype(np.uint8)
+    g = np.clip(g * (mean_all / g_mean), 0, 255).astype(np.uint8)
+    r = np.clip(r * (mean_all / r_mean), 0, 255).astype(np.uint8)
+    balanced = cv2.merge([b, g, r])
+    return balanced
 
 # def fix_contrast_brightness(img, threshold=220, clip_limit=10.0, tile_grid_size=(8,8)):
 #     lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
@@ -68,20 +64,22 @@ def correct_white(img):
 #     return cv2.cvtColor(lab_fixed, cv2.COLOR_LAB2BGR)
 
 def sharpen_image(img):
-    img_smooth = cv2.bilateralFilter(img, 7, 50, 50)
-    laplacian = cv2.Laplacian(img_smooth, cv2.CV_64F)
-    sharpened = cv2.convertScaleAbs(img - laplacian)
+    blurred = cv2.GaussianBlur(img, (0, 0), 1.5)
+
+    # Step 2: Compute the sharpened image
+    sharpened = cv2.addWeighted(img, 1 + 1.5, blurred, -1.5, 0)
+
     return sharpened
 
 def process(img_path): #applies all the processing function to the image
     img = cv2.imread(img_path) #read the image
     dewarped = dewarp_image(img)
     inpainted = inpaint_missing(dewarped)
-    balanced = correct_white(inpainted)
-    denoised = remove_noise(balanced)
-    #sharpened = sharpen_image(denoised)
+    denoised = remove_noise(inpainted)
+    balanced = balance_colours(denoised)
+    sharpened = sharpen_image(balanced)
     #contrasted = fix_contrast_brightness(denoised)
-    return denoised
+    return sharpened
 
 def main(img_dir):
     results_dir = "Results"
