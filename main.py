@@ -31,34 +31,34 @@ def inpaint_missing(img): #fills the missing region on the image
     return inpainted
 
 def remove_noise(img):
-    denoised = cv2.bilateralFilter(img, 15, 75, 75)
-    denoised = cv2.medianBlur(denoised, 3)
+    denoised = cv2.bilateralFilter(img, 15, 75, 75) #bilateral filter to remove whatever noise we can before median blur
     b, g, r = cv2.split(denoised)
-    b_blurred = cv2.medianBlur(b, 3)
+    b_blurred = cv2.medianBlur(b, 3) #median blur only to the blue and green channels as they introduce most of the remaining noise
     g_blurred = cv2.medianBlur(g, 3)
     denoised = cv2.merge([b_blurred, g_blurred, r])
-    denoised = cv2.fastNlMeansDenoisingColored(denoised, None, 1, 12, 7, 20)
+    denoised = cv2.medianBlur(denoised, 3) #median blur again on the entire image to further smoothen the rest of salt/pepper leaving just colour spots
+    denoised = cv2.fastNlMeansDenoisingColored(denoised, None, 1, 9, 7, 20) #Non-local means coloured to remove colour spots without denoising the rest further
     return denoised
 
-def balance_colours(img):
+def balance_colours(img): #balances colours according to gray world assumtion
     b, g, r = cv2.split(img)
     b_mean = np.mean(b)
     g_mean = np.mean(g)
     r_mean = np.mean(r)
-    mean_all = (b_mean + g_mean + r_mean) / 3
+    mean_all = (b_mean + g_mean + r_mean) / 3 #mean of all pixel brightnesses across 3 channels
     b = np.clip(b * (mean_all / b_mean), 0, 255).astype(np.uint8)
-    g = np.clip(g * (mean_all / g_mean), 0, 255).astype(np.uint8)
+    g = np.clip(g * (mean_all / g_mean), 0, 255).astype(np.uint8) #scale each channel to have equal brightness
     r = np.clip(r * (mean_all / r_mean), 0, 255).astype(np.uint8)
     balanced = cv2.merge([b, g, r])
     return balanced
 
 def fix_contrast_brightness(img):
-    adjusted = cv2.convertScaleAbs(img, None, 0.97, 1)
+    adjusted = cv2.convertScaleAbs(img, None, 0.97, 1) #very slightly lowers the contrast and brightens the image
     return adjusted
 
-def sharpen_image(img):
-    blur = cv2.GaussianBlur(img, (0, 0), 1.5)
-    sharpened = cv2.addWeighted(img, 1 + 1.5, blur, -1.5, 0)
+def sharpen_image(img): #unsharp mask sharpening method
+    blur_mask = cv2.GaussianBlur(img, (0, 0), 1.5) #Gaussian blur to soften the image creating the mask
+    sharpened = cv2.addWeighted(img, 1 + 1.5, blur_mask, -1.5, 0) #sharpens the image by subtracting blurred mask from the original
     return sharpened
 
 def process(img_path): #applies all the processing function to the image
