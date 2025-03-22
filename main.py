@@ -83,7 +83,7 @@ def balance_colours(img):
 
 
 # adjusts contrast and brightness of the image
-def fix_contrast_brightness(img):
+def contrast_brightness(img):
     # very slightly lowers the contrast and brightens the image
     adjusted = cv2.convertScaleAbs(img, None, 0.97, 1)
     return adjusted
@@ -106,7 +106,7 @@ def process(img_path):
     inpainted = inpaint_missing(dewarped)
     denoised = remove_noise(inpainted)
     balanced = balance_colours(denoised)
-    contrasted = fix_contrast_brightness(balanced)
+    contrasted = contrast_brightness(balanced)
     sharpened = sharpen_image(contrasted)
     return sharpened
 
